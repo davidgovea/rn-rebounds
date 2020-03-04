@@ -1,11 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   StyleSheet,
   Text,
   View,
   TouchableOpacity,
   Animated,
-  Easing
+  Easing,
+  Alert,
+  LayoutChangeEvent
 } from "react-native";
 import { TouchableWithoutFeedback } from "react-native-gesture-handler";
 import { t } from "react-native-tailwindcss";
@@ -25,7 +27,16 @@ export default function App() {
   const [finishUploadAnimation] = useState(new Animated.Value(0));
 
   const [filename, setFilename] = useState<string | undefined>();
-  const animatedButtonMargin = t.m1;
+  const animatedButtonMargin = {
+    margin: startUploadAnimation.interpolate({
+      inputRange: [0, 1],
+      outputRange: [4, 0]
+    })
+    // minHeight: startUploadAnimation.interpolate({
+    //   inputRange: [0, 1],
+    //   outputRange: ['0%', '100%'],
+    // })
+  };
   const animatedScale = {
     transform: [
       {
@@ -35,6 +46,14 @@ export default function App() {
         })
       }
     ]
+  };
+
+  const [buttonHeight, setButtonHeight] = useState<number | null>(null);
+  const captureButtonHeight = (layoutEvent: LayoutChangeEvent) => {
+    if (buttonHeight === null) {
+      // Only do this once
+      setButtonHeight(layoutEvent.nativeEvent.layout.height);
+    }
   };
 
   const animatePressIn = () => {
@@ -48,22 +67,48 @@ export default function App() {
     }).start();
   };
 
+  const pickFile = () => {
+    Alert.alert(
+      "File picker",
+      "Pretend this is a file picker",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Pick",
+          onPress: () => setFilename("Document.pdf")
+        }
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const startUpload = () => {
+    Animated.timing(startUploadAnimation, { toValue: 1 }).start(() => {
+      // Fire upload saga, listen to progress?
+    });
+  };
+
   return (
     <View style={styles.container}>
       <TouchableWithoutFeedback
         style={[
           t.bgWhite,
-          t.roundedLg,
+          t.rounded,
           t.shadowXl,
-          { minWidth: "75%" },
+          t.relative,
+          {
+            minWidth: "75%"
+            // height: buttonHeight
+          },
           animatedScale
         ]}
-        onPressIn={animatePressIn}
+        onPressIn={() => !filename && animatePressIn()}
         onPressOut={animatePressOut}
-        // onPress={() => Toast.show("PRESSED")}
+        onPress={() => !filename && pickFile()}
+        onLayout={captureButtonHeight}
       >
-        <View style={[t.flexRow]}>
-          <View style={[t.flex1, t.flexRow, t.itemsCenter, t.pX3]}>
+        <View style={[t.flexRow, t.bgWhite, t.roundedLg, t.shadowXl]}>
+          <View style={[t.flex1, t.flexRow, t.itemsCenter, t.pX3, t.pY5]}>
             <MaterialCommunityIcons name="paperclip" size={24} />
             <Text style={[human.body, t.mL2, !filename && t.textGray600]}>
               {filename ? filename : "Select a file"}
@@ -71,13 +116,15 @@ export default function App() {
           </View>
           <TouchableWithoutFeedback
             style={[
-              t.pY4,
-              t.pX2,
+              t.flex1,
+              t.justifyCenter,
+              t.pX3,
               t.roundedLg,
               animatedButtonMargin,
               { backgroundColor: ORANGE_ACTION }
             ]}
-            // onPress={() => Toast.show('inner')}
+            onPress={() => !!filename && startUpload()}
+            onPressIn={() => !!filename && animatePressIn()}
           >
             <Text style={[human.body, t.textWhite]}>Upload</Text>
           </TouchableWithoutFeedback>
