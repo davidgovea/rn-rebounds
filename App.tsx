@@ -324,7 +324,7 @@ export default function App() {
           >
             <>
               <MaterialCommunityIcons name="paperclip" size={24} />
-              <Text style={[human.body, t.mL2, !filename && t.textGray600]}>
+              <Text style={[human.title3, t.mL2, !filename && t.textGray600]}>
                 {filename ? filename : 'Select a file'}
               </Text>
             </>
@@ -345,7 +345,7 @@ export default function App() {
           onPressOut={animatePressOut}
           onLayout={captureButtonWidth}
         >
-          <Animated.Text style={[human.body, t.textWhite]}>
+          <Animated.Text style={[human.title3, t.textWhite]}>
             Upload
           </Animated.Text>
         </TouchableWithoutFeedback>
@@ -361,7 +361,7 @@ export default function App() {
               ]}
             >
               <Animated.Text
-                style={[human.body, t.textWhite, uploadingTextStyles]}
+                style={[human.title3, t.textWhite, uploadingTextStyles]}
               >
                 Uploading...
               </Animated.Text>
@@ -399,7 +399,7 @@ export default function App() {
               size={20}
               style={[t.textWhite]}
             />
-            <Text style={[human.body, t.textWhite, t.mL2]}>Completed</Text>
+            <Text style={[human.title3, t.textWhite, t.mL2]}>Completed</Text>
           </Animated.View>
         </View>
       </Animated.View>
