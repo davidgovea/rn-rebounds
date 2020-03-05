@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Alert,
   Animated,
@@ -182,15 +182,21 @@ export default function App() {
     }),
   };
 
+  const [pressAnimationPromise, setPressAnimationPromise] = useState(
+    Promise.resolve()
+  );
   const animatePressIn = () => {
+    setPressAnimationPromise(new Promise((r) => setTimeout(r, 100)));
     Animated.timing(pressBounceAnimation, { toValue: 1, duration: 80 }).start();
   };
 
   const animatePressOut = () => {
-    Animated.timing(pressBounceAnimation, {
-      toValue: 0,
-      easing: Easing.bounce,
-    }).start();
+    pressAnimationPromise.then(() => {
+      Animated.timing(pressBounceAnimation, {
+        toValue: 0,
+        easing: Easing.bounce,
+      }).start();
+    });
   };
 
   const pickFile = () => {
@@ -240,6 +246,7 @@ export default function App() {
       Animated.parallel([
         Animated.timing(uploadAnimation, {
           toValue: 4,
+          duration: 666,
           delay: 1500,
           easing: Easing.inOut(Easing.cubic),
         }),
