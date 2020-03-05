@@ -377,6 +377,7 @@ export default function App() {
           ]}
         />
         <View
+          pointerEvents="none"
           style={[
             t.absolute,
             t.inset0,
