@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
   Alert,
   Animated,
@@ -21,6 +21,7 @@ const DARKBLUE_COMPLETE = '#282B43';
 export default function App() {
   const [filename, setFilename] = useState<string | undefined>();
   const [uploadStarted, setUploadStarted] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const [buttonWidth, setButtonWidth] = useState<number | null>(null);
   const captureButtonWidth = (layoutEvent: LayoutChangeEvent) => {
@@ -29,7 +30,10 @@ export default function App() {
     }
   };
 
-  const [componentDimensions, setComponentDimensions] = useState<LayoutRectangle | null>(null);
+  const [
+    componentDimensions,
+    setComponentDimensions,
+  ] = useState<LayoutRectangle | null>(null);
   const captureComponentDimensions = (layoutEvent: LayoutChangeEvent) => {
     if (componentDimensions === null) {
       // Only do this once
@@ -38,9 +42,8 @@ export default function App() {
   };
 
   const [pressBounceAnimation] = useState(new Animated.Value(0));
-  const [fileUploadProgress] = useState(new Animated.Value(0));
-  const [startUploadAnimation] = useState(new Animated.Value(0));
-  const [finishUploadAnimation] = useState(new Animated.Value(0));
+  const [uploadAnimation] = useState(new Animated.Value(0));
+  const [progressAnimation] = useState(new Animated.Value(0));
 
   const animatedComponentScale = {
     transform: [
@@ -54,12 +57,12 @@ export default function App() {
   };
 
   const animatedButtonMargin = {
-    margin: startUploadAnimation.interpolate({
+    margin: uploadAnimation.interpolate({
       inputRange: [0, 1],
       outputRange: [4, 0],
       extrapolate: 'clamp',
     }),
-    paddingHorizontal: startUploadAnimation.interpolate({
+    paddingHorizontal: uploadAnimation.interpolate({
       inputRange: [0, 1],
       outputRange: [12, 16],
       extrapolate: 'clamp',
@@ -67,7 +70,7 @@ export default function App() {
   };
 
   const buttonCloneStyles = {
-    width: startUploadAnimation.interpolate({
+    width: uploadAnimation.interpolate({
       inputRange: [1, 2],
       outputRange: [buttonWidth, componentDimensions?.width || 0],
     }),
@@ -76,14 +79,14 @@ export default function App() {
   const mainTextStyles = {
     transform: [
       {
-        translateY: startUploadAnimation.interpolate({
+        translateY: uploadAnimation.interpolate({
           inputRange: [1, 2],
           outputRange: [0, -(componentDimensions?.height || 0) / 2],
           extrapolate: 'clamp',
         }),
       },
     ],
-    opacity: startUploadAnimation.interpolate({
+    opacity: uploadAnimation.interpolate({
       inputRange: [1, 1.5],
       outputRange: [1, 0],
       extrapolate: 'clamp',
@@ -93,14 +96,25 @@ export default function App() {
   const uploadingTextStyles = {
     transform: [
       {
-        translateY: startUploadAnimation.interpolate({
+        translateY: uploadAnimation.interpolate({
           inputRange: [1, 2],
           outputRange: [(componentDimensions?.height || 0) / 2, 0],
           extrapolate: 'clamp',
         }),
       },
-    ]
-  }
+    ],
+  };
+
+  const completeBoxStyles = {
+    width: progressAnimation.interpolate({
+      inputRange: [0, 100],
+      outputRange: [0, componentDimensions?.width || 0],
+    }),
+  };
+
+  useEffect(() => {
+    Animated.timing(progressAnimation, {toValue: uploadProgress}).start();
+  }, [uploadProgress]);
 
   const animatePressIn = () => {
     Animated.timing(pressBounceAnimation, { toValue: 1, duration: 80 }).start();
@@ -129,17 +143,36 @@ export default function App() {
   };
 
   const startUpload = () => {
-    Animated.timing(startUploadAnimation, { toValue: 1, delay: 125 }).start(
-      () => {
-        setUploadStarted(true);
-        Animated.timing(startUploadAnimation, {
-          toValue: 2,
-          delay: 100,
-        }).start(() => {
-          // Start file upload (saga in real life?)
-        });
-      }
+    Animated.timing(uploadAnimation, { toValue: 1, delay: 125 }).start(() => {
+      setUploadStarted(true);
+      Animated.timing(uploadAnimation, {
+        toValue: 2,
+        delay: 100,
+      }).start(() => {
+        simulateUpload();
+      });
+    });
+  };
+
+  const finishUpload = () => {
+    Animated.timing(uploadAnimation, { toValue: 3 }).start(() =>
+      Animated.timing(uploadAnimation, { toValue: 4 })
     );
+  };
+
+  const simulateUpload = () => {
+    let progress = 0;
+    const interval = setInterval(() => {
+      const increment = Math.random() * 25;
+      progress += increment;
+      if (progress > 100) {
+        clearInterval(interval);
+        setUploadProgress(100);
+        finishUpload();
+      } else {
+        setUploadProgress(progress);
+      }
+    }, 500);
   };
 
   return (
@@ -202,11 +235,38 @@ export default function App() {
           onPressOut={animatePressOut}
           onLayout={captureButtonWidth}
         >
-          <Animated.Text style={[human.body, t.textWhite, mainTextStyles]}>Upload</Animated.Text>
+          <Animated.Text style={[human.body, t.textWhite, mainTextStyles]}>
+            Upload
+          </Animated.Text>
         </TouchableWithoutFeedback>
-        {uploadStarted && <View style={[t.absolute, t.inset0, t.hFull, t.justifyCenter, t.itemsCenter]}>
-          <Animated.Text style={[human.body, t.textWhite, uploadingTextStyles]}>Uploading...</Animated.Text>
-        </View>}
+        {uploadStarted && (
+          <>
+            <View
+              style={[
+                t.absolute,
+                t.inset0,
+                t.hFull,
+                t.justifyCenter,
+                t.itemsCenter,
+              ]}
+            >
+              <Animated.Text
+                style={[human.body, t.textWhite, uploadingTextStyles]}
+              >
+                Uploading...
+              </Animated.Text>
+            </View>
+            <Animated.View
+              style={[
+                t.absolute,
+                t.insetX0,
+                t.h2,
+                { backgroundColor: DARKBLUE_COMPLETE, bottom: 0 },
+                completeBoxStyles,
+              ]}
+            />
+          </>
+        )}
       </Animated.View>
     </View>
   );
