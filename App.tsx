@@ -13,10 +13,12 @@ import {
 import { TouchableWithoutFeedback } from 'react-native-gesture-handler';
 import { t } from 'react-native-tailwindcss';
 import { human } from 'react-native-typography';
+import Toast from 'react-native-root-toast';
 
 const YELLOW_BG = '#F8E3B7';
 const ORANGE_ACTION = '#E5855F';
 const DARKBLUE_COMPLETE = '#282B43';
+const PROGRESS_BAR_HEIGHT = 8;
 
 export default function App() {
   const [filename, setFilename] = useState<string | undefined>();
@@ -35,11 +37,13 @@ export default function App() {
     setComponentDimensions,
   ] = useState<LayoutRectangle | null>(null);
   const captureComponentDimensions = (layoutEvent: LayoutChangeEvent) => {
-    if (componentDimensions === null) {
-      // Only do this once
-      setComponentDimensions(layoutEvent.nativeEvent.layout);
-    }
+    // if (componentDimensions === null) {
+    // Only do this once
+    setComponentDimensions(layoutEvent.nativeEvent.layout);
+    // }
   };
+  const componentHeight = componentDimensions?.height || 0;
+  const componentWidth = componentDimensions?.width || 0;
 
   const [pressBounceAnimation] = useState(new Animated.Value(0));
   const [uploadAnimation] = useState(new Animated.Value(0));
@@ -72,7 +76,7 @@ export default function App() {
   const buttonCloneStyles = {
     width: uploadAnimation.interpolate({
       inputRange: [1, 2],
-      outputRange: [buttonWidth, componentDimensions?.width || 0],
+      outputRange: [buttonWidth, componentWidth],
     }),
   };
 
@@ -81,7 +85,7 @@ export default function App() {
       {
         translateY: uploadAnimation.interpolate({
           inputRange: [1, 2],
-          outputRange: [0, -(componentDimensions?.height || 0) / 2],
+          outputRange: [0, -componentHeight / 2],
           extrapolate: 'clamp',
         }),
       },
@@ -98,7 +102,7 @@ export default function App() {
       {
         translateY: uploadAnimation.interpolate({
           inputRange: [1, 2],
-          outputRange: [(componentDimensions?.height || 0) / 2, 0],
+          outputRange: [componentHeight / 2, 0],
           extrapolate: 'clamp',
         }),
       },
@@ -108,13 +112,25 @@ export default function App() {
   const completeBoxStyles = {
     width: progressAnimation.interpolate({
       inputRange: [0, 100],
-      outputRange: [0, componentDimensions?.width || 0],
+      outputRange: [0, componentWidth],
+    }),
+    height: uploadAnimation.interpolate({
+      inputRange: [2, 3],
+      outputRange: [PROGRESS_BAR_HEIGHT, componentHeight],
+      extrapolate: 'clamp',
     }),
   };
-
-  useEffect(() => {
-    Animated.timing(progressAnimation, {toValue: uploadProgress}).start();
-  }, [uploadProgress]);
+  const completeTextStyles = {
+    transform: [
+      {
+        translateY: uploadAnimation.interpolate({
+          inputRange: [2, 3],
+          outputRange: [componentHeight, 0],
+          extrapolate: 'clamp',
+        }),
+      },
+    ],
+  };
 
   const animatePressIn = () => {
     Animated.timing(pressBounceAnimation, { toValue: 1, duration: 80 }).start();
@@ -160,6 +176,16 @@ export default function App() {
     );
   };
 
+  useEffect(() => {
+    Animated.timing(progressAnimation, { toValue: uploadProgress }).start(
+      () => {
+        if (uploadProgress >= 100) {
+          finishUpload();
+        }
+      }
+    );
+  }, [uploadProgress]);
+
   const simulateUpload = () => {
     let progress = 0;
     const interval = setInterval(() => {
@@ -168,7 +194,6 @@ export default function App() {
       if (progress > 100) {
         clearInterval(interval);
         setUploadProgress(100);
-        finishUpload();
       } else {
         setUploadProgress(progress);
       }
@@ -198,8 +223,9 @@ export default function App() {
             style={[
               t.absolute,
               t.roundedLg,
-              t.hFull,
+              // t.hFull,
               {
+                height: componentHeight,
                 backgroundColor: ORANGE_ACTION,
                 right: 0,
               },
@@ -260,11 +286,26 @@ export default function App() {
               style={[
                 t.absolute,
                 t.insetX0,
-                t.h2,
                 { backgroundColor: DARKBLUE_COMPLETE, bottom: 0 },
                 completeBoxStyles,
               ]}
             />
+            <View
+              style={[
+                t.absolute,
+                t.inset0,
+                t.hFull,
+                t.justifyCenter,
+                t.itemsCenter,
+              ]}
+            >
+              <Animated.View style={[t.flexRow, t.justifyCenter, t.itemsCenter, completeTextStyles]}>
+                <MaterialCommunityIcons name="check" size={20} style={[t.textWhite]} />
+                <Text style={[human.body, t.textWhite, t.mL2]}>
+                  Completed
+                </Text>
+              </Animated.View>
+            </View>
           </>
         )}
       </Animated.View>
