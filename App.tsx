@@ -42,8 +42,8 @@ export default function App() {
     setComponentDimensions(layoutEvent.nativeEvent.layout);
     // }
   };
-  const componentHeight = componentDimensions?.height || 0;
-  const componentWidth = componentDimensions?.width || 0;
+  const componentHeight = Math.floor((componentDimensions?.height || 0) + 1);
+  const componentWidth = Math.floor((componentDimensions?.width || 0) + 1);
 
   const [pressBounceAnimation] = useState(new Animated.Value(0));
   const [uploadAnimation] = useState(new Animated.Value(0));
