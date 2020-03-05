@@ -48,29 +48,55 @@ export default function App() {
   const [pressBounceAnimation] = useState(new Animated.Value(0));
   const [uploadAnimation] = useState(new Animated.Value(0));
   const [progressAnimation] = useState(new Animated.Value(0));
+  const [finalAnimation] = useState(new Animated.Value(0));
 
+  const pressScale = pressBounceAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0.96],
+  });
+  const completedScale = uploadAnimation.interpolate({
+    inputRange: [3.75, 3.9, 4],
+    outputRange: [1, 1.04, 1],
+    easing: Easing.ease,
+    extrapolate: 'clamp',
+  });
+  const combinedScale = Animated.add(pressScale, completedScale);
   const animatedComponentScale = {
     transform: [
       {
-        scale: pressBounceAnimation.interpolate({
-          inputRange: [0, 1],
-          outputRange: [1, 0.96],
-        }),
+        scale: Animated.add(-1, combinedScale),
+        // scale:pressScale
       },
     ],
   };
 
-  const animatedButtonMargin = {
+  const animatedButtonStyles = {
     margin: uploadAnimation.interpolate({
-      inputRange: [0, 1],
-      outputRange: [4, 0],
+      inputRange: [0, 1, 2.99, 3],
+      outputRange: [4, 0, 0, 4],
       extrapolate: 'clamp',
     }),
     paddingHorizontal: uploadAnimation.interpolate({
-      inputRange: [0, 1],
-      outputRange: [12, 16],
+      inputRange: [0, 1, 2.99, 3],
+      outputRange: [12, 16, 16, 12],
       extrapolate: 'clamp',
     }),
+    transform: [
+      {
+        translateY: uploadAnimation.interpolate({
+          inputRange: [1, 2, 3, 3.9],
+          outputRange: [0, -componentHeight, -componentHeight, 0],
+          extrapolate: 'clamp',
+        }),
+      },
+      {
+        scale: uploadAnimation.interpolate({
+          inputRange: [0, 2.99, 3, 3.65, 4],
+          outputRange: [1, 1, 0.9, 0.9, 1],
+          extrapolate: 'clamp',
+        }),
+      },
+    ],
   };
 
   const buttonCloneStyles = {
@@ -84,15 +110,22 @@ export default function App() {
     transform: [
       {
         translateY: uploadAnimation.interpolate({
-          inputRange: [1, 2],
-          outputRange: [0, -componentHeight / 2],
+          inputRange: [1, 2, 3, 3.9],
+          outputRange: [0, -componentHeight, -componentHeight, 0],
+          extrapolate: 'clamp',
+        }),
+      },
+      {
+        scale: uploadAnimation.interpolate({
+          inputRange: [0, 2.99, 3, 3.65, 4],
+          outputRange: [1, 1, 0.9, 0.9, 1],
           extrapolate: 'clamp',
         }),
       },
     ],
     opacity: uploadAnimation.interpolate({
-      inputRange: [1, 1.5],
-      outputRange: [1, 0],
+      inputRange: [1, 1.5, 2.99, 3],
+      outputRange: [1, 0, 0, 1],
       extrapolate: 'clamp',
     }),
   };
@@ -102,7 +135,7 @@ export default function App() {
       {
         translateY: uploadAnimation.interpolate({
           inputRange: [1, 2],
-          outputRange: [componentHeight / 2, 0],
+          outputRange: [componentHeight, 0],
           extrapolate: 'clamp',
         }),
       },
@@ -143,6 +176,10 @@ export default function App() {
         }),
       },
     ],
+    opacity: uploadAnimation.interpolate({
+      inputRange: [0, 1.99, 2],
+      outputRange: [0, 0, 1],
+    }),
   };
 
   const animatePressIn = () => {
@@ -176,11 +213,16 @@ export default function App() {
   };
 
   const startUpload = () => {
-    Animated.timing(uploadAnimation, { toValue: 1, delay: 125 }).start(() => {
+    Animated.timing(uploadAnimation, {
+      toValue: 1,
+      delay: 125,
+      easing: Easing.inOut(Easing.cubic),
+    }).start(() => {
       setUploadStarted(true);
       Animated.timing(uploadAnimation, {
         toValue: 2,
         delay: 100,
+        easing: Easing.inOut(Easing.cubic),
       }).start(() => {
         simulateUpload();
       });
@@ -188,9 +230,32 @@ export default function App() {
   };
 
   const finishUpload = () => {
-    Animated.timing(uploadAnimation, { toValue: 3, delay: 200 }).start(() =>
-      Animated.timing(uploadAnimation, { toValue: 4, delay: 500 }).start()
-    );
+    setFilename(undefined);
+    Animated.timing(uploadAnimation, {
+      toValue: 3,
+      delay: 666,
+      easing: Easing.out(Easing.ease),
+    }).start(() => {
+      setUploadStarted(false);
+      Animated.parallel([
+        Animated.timing(uploadAnimation, {
+          toValue: 4,
+          delay: 1500,
+          easing: Easing.inOut(Easing.cubic),
+        }),
+      ]).start(() => {
+        finalAnimation.setValue(0);
+        progressAnimation.setValue(0);
+        uploadAnimation.setValue(0);
+      });
+    });
+  };
+
+  const reset = () => {
+    setFilename(undefined);
+    setUploadStarted(false);
+    progressAnimation.setValue(0);
+    uploadAnimation.setValue(0);
   };
 
   useEffect(() => {
@@ -257,10 +322,12 @@ export default function App() {
             onPressOut={animatePressOut}
             onPress={() => !filename && pickFile()}
           >
-            <MaterialCommunityIcons name="paperclip" size={24} />
-            <Text style={[human.body, t.mL2, !filename && t.textGray600]}>
-              {filename ? filename : 'Select a file'}
-            </Text>
+            <>
+              <MaterialCommunityIcons name="paperclip" size={24} />
+              <Text style={[human.body, t.mL2, !filename && t.textGray600]}>
+                {filename ? filename : 'Select a file'}
+              </Text>
+            </>
           </TouchableWithoutFeedback>
         </View>
         <TouchableWithoutFeedback
@@ -271,14 +338,14 @@ export default function App() {
             t.pX3,
             t.roundedLg,
             { backgroundColor: ORANGE_ACTION },
-            animatedButtonMargin,
+            animatedButtonStyles,
           ]}
           onPress={() => (filename ? startUpload() : pickFile())}
           onPressIn={animatePressIn}
           onPressOut={animatePressOut}
           onLayout={captureButtonWidth}
         >
-          <Animated.Text style={[human.body, t.textWhite, mainTextStyles]}>
+          <Animated.Text style={[human.body, t.textWhite]}>
             Upload
           </Animated.Text>
         </TouchableWithoutFeedback>
@@ -299,41 +366,41 @@ export default function App() {
                 Uploading...
               </Animated.Text>
             </View>
-            <Animated.View
-              style={[
-                t.absolute,
-                t.insetX0,
-                { backgroundColor: DARKBLUE_COMPLETE, bottom: 0 },
-                completeBoxStyles,
-              ]}
-            />
-            <View
-              style={[
-                t.absolute,
-                t.inset0,
-                t.hFull,
-                t.justifyCenter,
-                t.itemsCenter,
-              ]}
-            >
-              <Animated.View
-                style={[
-                  t.flexRow,
-                  t.justifyCenter,
-                  t.itemsCenter,
-                  completeTextStyles,
-                ]}
-              >
-                <MaterialCommunityIcons
-                  name="check"
-                  size={20}
-                  style={[t.textWhite]}
-                />
-                <Text style={[human.body, t.textWhite, t.mL2]}>Completed</Text>
-              </Animated.View>
-            </View>
           </>
         )}
+        <Animated.View
+          style={[
+            t.absolute,
+            t.insetX0,
+            { backgroundColor: DARKBLUE_COMPLETE, bottom: 0 },
+            completeBoxStyles,
+          ]}
+        />
+        <View
+          style={[
+            t.absolute,
+            t.inset0,
+            t.hFull,
+            t.justifyCenter,
+            t.itemsCenter,
+          ]}
+        >
+          <Animated.View
+            style={[
+              t.flexRow,
+              t.justifyCenter,
+              t.itemsCenter,
+              completeTextStyles,
+            ]}
+          >
+            <MaterialCommunityIcons
+              name="check"
+              size={20}
+              style={[t.textWhite]}
+            />
+            <Text style={[human.body, t.textWhite, t.mL2]}>Completed</Text>
+          </Animated.View>
+        </View>
       </Animated.View>
     </View>
   );
