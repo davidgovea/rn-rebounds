@@ -1,41 +1,57 @@
-import React, { useState, useCallback } from "react";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import React, { useCallback, useState } from "react";
 import {
-  StyleSheet,
-  Text,
-  View,
-  TouchableOpacity,
+  Alert,
   Animated,
   Easing,
-  Alert,
-  LayoutChangeEvent
+  LayoutChangeEvent,
+  StyleSheet,
+  Text,
+  View
 } from "react-native";
 import { TouchableWithoutFeedback } from "react-native-gesture-handler";
 import { t } from "react-native-tailwindcss";
-import { ShadowSvg } from "react-native-neomorph-shadows";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { human } from "react-native-typography";
-import Toast from "react-native-root-toast";
 
 const YELLOW_BG = "#F8E3B7";
 const ORANGE_ACTION = "#E5855F";
 const DARKBLUE_COMPLETE = "#282B43";
 
 export default function App() {
+  const [filename, setFilename] = useState<string | undefined>();
+  const [showButtonClone, setShowButtonClone] = useState(false);
+
+  const [buttonWidth, setButtonWidth] = useState<number | null>(null);
+  const captureButtonWidth = (layoutEvent: LayoutChangeEvent) => {
+    if (showButtonClone) {
+      setButtonWidth(layoutEvent.nativeEvent.layout.width);
+    }
+  };
+
+  const [componentWidth, setComponentWidth] = useState<number | null>(null);
+  const captureComponentWidth = (layoutEvent: LayoutChangeEvent) => {
+    if (componentWidth === null) {
+      // Only do this once
+      setComponentWidth(layoutEvent.nativeEvent.layout.width);
+    }
+  };
+
   const [pressBounceAnimation] = useState(new Animated.Value(0));
   const [fileUploadProgress] = useState(new Animated.Value(0));
   const [startUploadAnimation] = useState(new Animated.Value(0));
   const [finishUploadAnimation] = useState(new Animated.Value(0));
 
-  const [filename, setFilename] = useState<string | undefined>();
   const animatedButtonMargin = {
     margin: startUploadAnimation.interpolate({
       inputRange: [0, 1],
-      outputRange: [4, 0]
+      outputRange: [4, 0],
+      extrapolate: "clamp"
+    }),
+    paddingHorizontal: startUploadAnimation.interpolate({
+      inputRange: [0, 1],
+      outputRange: [12, 16],
+      extrapolate: "clamp"
     })
-    // minHeight: startUploadAnimation.interpolate({
-    //   inputRange: [0, 1],
-    //   outputRange: ['0%', '100%'],
-    // })
   };
   const animatedScale = {
     transform: [
@@ -48,12 +64,11 @@ export default function App() {
     ]
   };
 
-  const [buttonHeight, setButtonHeight] = useState<number | null>(null);
-  const captureButtonHeight = (layoutEvent: LayoutChangeEvent) => {
-    if (buttonHeight === null) {
-      // Only do this once
-      setButtonHeight(layoutEvent.nativeEvent.layout.height);
-    }
+  const buttonCloneStyles = {
+    width: startUploadAnimation.interpolate({
+      inputRange: [1, 2],
+      outputRange: [buttonWidth, componentWidth]
+    })
   };
 
   const animatePressIn = () => {
@@ -83,17 +98,26 @@ export default function App() {
   };
 
   const startUpload = () => {
-    Animated.timing(startUploadAnimation, { toValue: 1 }).start(() => {
-      // Fire upload saga, listen to progress?
-    });
+    Animated.timing(startUploadAnimation, { toValue: 1, delay: 125 }).start(
+      () => {
+        setShowButtonClone(true);
+        Animated.timing(startUploadAnimation, {
+          toValue: 2,
+          delay: 100
+        }).start(() => {
+          // Start file upload (saga in real life?)
+        });
+      }
+    );
   };
 
   return (
     <View style={styles.container}>
-      <TouchableWithoutFeedback
+      <Animated.View
         style={[
+          t.flexRow,
           t.bgWhite,
-          t.rounded,
+          t.roundedLg,
           t.shadowXl,
           t.relative,
           {
@@ -102,34 +126,53 @@ export default function App() {
           },
           animatedScale
         ]}
-        onPressIn={() => !filename && animatePressIn()}
-        onPressOut={animatePressOut}
-        onPress={() => !filename && pickFile()}
-        onLayout={captureButtonHeight}
+        onLayout={captureComponentWidth}
       >
-        <View style={[t.flexRow, t.bgWhite, t.roundedLg, t.shadowXl]}>
-          <View style={[t.flex1, t.flexRow, t.itemsCenter, t.pX3, t.pY5]}>
+        {showButtonClone && (
+          <Animated.View
+            style={[
+              t.absolute,
+              t.roundedLg,
+              {
+                backgroundColor: ORANGE_ACTION,
+                right: 0,
+                height: "100%"
+              },
+              buttonCloneStyles
+            ]}
+          />
+        )}
+        <View style={[t.flex1]}>
+          <TouchableWithoutFeedback
+            style={[t.flexRow, t.itemsCenter, t.pY5, t.pX3]}
+            onPressIn={() => !filename && animatePressIn()}
+            onPressOut={animatePressOut}
+            onPress={() => !filename && pickFile()}
+          >
             <MaterialCommunityIcons name="paperclip" size={24} />
             <Text style={[human.body, t.mL2, !filename && t.textGray600]}>
               {filename ? filename : "Select a file"}
             </Text>
-          </View>
-          <TouchableWithoutFeedback
-            style={[
-              t.flex1,
-              t.justifyCenter,
-              t.pX3,
-              t.roundedLg,
-              animatedButtonMargin,
-              { backgroundColor: ORANGE_ACTION }
-            ]}
-            onPress={() => !!filename && startUpload()}
-            onPressIn={() => !!filename && animatePressIn()}
-          >
-            <Text style={[human.body, t.textWhite]}>Upload</Text>
           </TouchableWithoutFeedback>
         </View>
-      </TouchableWithoutFeedback>
+        <TouchableWithoutFeedback
+          style={[
+            t.flex1,
+            // t.wFull,
+            t.justifyCenter,
+            t.pX3,
+            t.roundedLg,
+            animatedButtonMargin,
+            { backgroundColor: ORANGE_ACTION }
+          ]}
+          onPress={() => (filename ? startUpload() : pickFile())}
+          onPressIn={animatePressIn}
+          onPressOut={animatePressOut}
+          onLayout={captureButtonWidth}
+        >
+          <Text style={[human.body, t.textWhite]}>Upload</Text>
+        </TouchableWithoutFeedback>
+      </Animated.View>
     </View>
   );
 }
