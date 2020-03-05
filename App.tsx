@@ -119,13 +119,26 @@ export default function App() {
       outputRange: [PROGRESS_BAR_HEIGHT, componentHeight],
       extrapolate: 'clamp',
     }),
+    transform: [
+      {
+        translateY: uploadAnimation.interpolate({
+          inputRange: [3, 4],
+          outputRange: [0, componentHeight],
+          extrapolate: 'clamp',
+        }),
+      },
+    ],
   };
   const completeTextStyles = {
     transform: [
       {
         translateY: uploadAnimation.interpolate({
-          inputRange: [2, 3],
-          outputRange: [componentHeight, 0],
+          inputRange: [2, 3, 4],
+          outputRange: [
+            componentHeight - PROGRESS_BAR_HEIGHT,
+            0,
+            componentHeight,
+          ],
           extrapolate: 'clamp',
         }),
       },
@@ -144,17 +157,21 @@ export default function App() {
   };
 
   const pickFile = () => {
-    Alert.alert(
-      'File picker',
-      'Pretend this is a file picker',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Pick',
-          onPress: () => setFilename('Document.pdf'),
-        },
-      ],
-      { cancelable: true }
+    setTimeout(
+      () =>
+        Alert.alert(
+          'File picker',
+          'Pretend this is a file picker',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Pick',
+              onPress: () => setFilename('Document.pdf'),
+            },
+          ],
+          { cancelable: true }
+        ),
+      250
     );
   };
 
@@ -171,8 +188,8 @@ export default function App() {
   };
 
   const finishUpload = () => {
-    Animated.timing(uploadAnimation, { toValue: 3 }).start(() =>
-      Animated.timing(uploadAnimation, { toValue: 4 })
+    Animated.timing(uploadAnimation, { toValue: 3, delay: 200 }).start(() =>
+      Animated.timing(uploadAnimation, { toValue: 4, delay: 500 }).start()
     );
   };
 
@@ -299,11 +316,20 @@ export default function App() {
                 t.itemsCenter,
               ]}
             >
-              <Animated.View style={[t.flexRow, t.justifyCenter, t.itemsCenter, completeTextStyles]}>
-                <MaterialCommunityIcons name="check" size={20} style={[t.textWhite]} />
-                <Text style={[human.body, t.textWhite, t.mL2]}>
-                  Completed
-                </Text>
+              <Animated.View
+                style={[
+                  t.flexRow,
+                  t.justifyCenter,
+                  t.itemsCenter,
+                  completeTextStyles,
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name="check"
+                  size={20}
+                  style={[t.textWhite]}
+                />
+                <Text style={[human.body, t.textWhite, t.mL2]}>Completed</Text>
               </Animated.View>
             </View>
           </>
