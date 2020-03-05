@@ -11,7 +11,7 @@ import {
   LayoutRectangle,
 } from 'react-native';
 import { TouchableWithoutFeedback } from 'react-native-gesture-handler';
-import { t } from 'react-native-tailwindcss';
+import { t, color } from 'react-native-tailwindcss';
 import { human } from 'react-native-typography';
 import Toast from 'react-native-root-toast';
 
@@ -293,13 +293,11 @@ export default function App() {
     <View style={styles.container}>
       <Animated.View
         style={[
-          t.overflowHidden,
-          t.flexRow,
-          t.bgWhite,
           t.roundedLg,
           t.shadowXl,
-          t.relative,
           {
+            shadowColor: 'rgba(0,0,0,0.3)',
+            shadowOffset: { width: 0, height: 0 },
             minWidth: '75%',
             // height: buttonHeight
           },
@@ -307,107 +305,118 @@ export default function App() {
         ]}
         onLayout={captureComponentDimensions}
       >
-        {uploadStarted && (
+        <View
+          style={[
+            t.bgWhite,
+            ,
+            t.roundedLg,
+            t.overflowHidden,
+            t.flexRow,
+            t.relative,
+          ]}
+        >
+          {uploadStarted && (
+            <Animated.View
+              style={[
+                t.absolute,
+                t.roundedLg,
+                // t.hFull,
+                {
+                  height: componentHeight,
+                  backgroundColor: ORANGE_ACTION,
+                  right: 0,
+                },
+                buttonCloneStyles,
+              ]}
+            />
+          )}
+          <View style={[t.flex1]}>
+            <TouchableWithoutFeedback
+              style={[t.flexRow, t.itemsCenter, t.pY5, t.pX3, mainTextStyles]}
+              onPressIn={() => !filename && animatePressIn()}
+              onPressOut={animatePressOut}
+              onPress={() => !filename && pickFile()}
+            >
+              <>
+                <MaterialCommunityIcons name="paperclip" size={24} />
+                <Text style={[human.title3, t.mL2, !filename && t.textGray600]}>
+                  {filename ? filename : 'Select a file'}
+                </Text>
+              </>
+            </TouchableWithoutFeedback>
+          </View>
+          <TouchableWithoutFeedback
+            style={[
+              t.flex1,
+              // t.wFull,
+              t.justifyCenter,
+              t.pX3,
+              t.roundedLg,
+              { backgroundColor: ORANGE_ACTION },
+              animatedButtonStyles,
+            ]}
+            onPress={() => (filename ? startUpload() : pickFile())}
+            onPressIn={animatePressIn}
+            onPressOut={animatePressOut}
+            onLayout={captureButtonWidth}
+          >
+            <Animated.Text style={[human.title3, t.textWhite]}>
+              Upload
+            </Animated.Text>
+          </TouchableWithoutFeedback>
+          {uploadStarted && (
+            <>
+              <View
+                style={[
+                  t.absolute,
+                  t.inset0,
+                  t.hFull,
+                  t.justifyCenter,
+                  t.itemsCenter,
+                ]}
+              >
+                <Animated.Text
+                  style={[human.title3, t.textWhite, uploadingTextStyles]}
+                >
+                  Uploading...
+                </Animated.Text>
+              </View>
+            </>
+          )}
           <Animated.View
             style={[
               t.absolute,
-              t.roundedLg,
-              // t.hFull,
-              {
-                height: componentHeight,
-                backgroundColor: ORANGE_ACTION,
-                right: 0,
-              },
-              buttonCloneStyles,
+              t.insetX0,
+              { backgroundColor: DARKBLUE_COMPLETE, bottom: 0 },
+              completeBoxStyles,
             ]}
           />
-        )}
-        <View style={[t.flex1]}>
-          <TouchableWithoutFeedback
-            style={[t.flexRow, t.itemsCenter, t.pY5, t.pX3, mainTextStyles]}
-            onPressIn={() => !filename && animatePressIn()}
-            onPressOut={animatePressOut}
-            onPress={() => !filename && pickFile()}
-          >
-            <>
-              <MaterialCommunityIcons name="paperclip" size={24} />
-              <Text style={[human.title3, t.mL2, !filename && t.textGray600]}>
-                {filename ? filename : 'Select a file'}
-              </Text>
-            </>
-          </TouchableWithoutFeedback>
-        </View>
-        <TouchableWithoutFeedback
-          style={[
-            t.flex1,
-            // t.wFull,
-            t.justifyCenter,
-            t.pX3,
-            t.roundedLg,
-            { backgroundColor: ORANGE_ACTION },
-            animatedButtonStyles,
-          ]}
-          onPress={() => (filename ? startUpload() : pickFile())}
-          onPressIn={animatePressIn}
-          onPressOut={animatePressOut}
-          onLayout={captureButtonWidth}
-        >
-          <Animated.Text style={[human.title3, t.textWhite]}>
-            Upload
-          </Animated.Text>
-        </TouchableWithoutFeedback>
-        {uploadStarted && (
-          <>
-            <View
-              style={[
-                t.absolute,
-                t.inset0,
-                t.hFull,
-                t.justifyCenter,
-                t.itemsCenter,
-              ]}
-            >
-              <Animated.Text
-                style={[human.title3, t.textWhite, uploadingTextStyles]}
-              >
-                Uploading...
-              </Animated.Text>
-            </View>
-          </>
-        )}
-        <Animated.View
-          style={[
-            t.absolute,
-            t.insetX0,
-            { backgroundColor: DARKBLUE_COMPLETE, bottom: 0 },
-            completeBoxStyles,
-          ]}
-        />
-        <View
-          pointerEvents="none"
-          style={[
-            t.absolute,
-            t.inset0,
-            t.hFull,
-            t.justifyCenter,
-            t.itemsCenter,
-          ]}
-        >
-          <Animated.View
+          <View
+            pointerEvents="none"
             style={[
-              t.flexRow,
+              t.absolute,
+              t.inset0,
+              t.hFull,
               t.justifyCenter,
               t.itemsCenter,
-              completeTextStyles,
             ]}
           >
-            <MaterialCommunityIcons
-              name="check"
-              size={20}
-              style={[t.textWhite]}
-            />
-            <Text style={[human.title3, t.textWhite, t.mL2]}>Completed</Text>
-          </Animated.View>
+            <Animated.View
+              style={[
+                t.flexRow,
+                t.justifyCenter,
+                t.itemsCenter,
+                completeTextStyles,
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="check"
+                size={20}
+                style={[t.textWhite]}
+              />
+              <Text style={[human.title3, t.textWhite, t.mL2]}>Completed</Text>
+            </Animated.View>
+          </View>
         </View>
       </Animated.View>
     </View>
