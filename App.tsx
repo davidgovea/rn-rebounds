@@ -1,5 +1,5 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import React, { useCallback, useState } from "react";
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import React, { useCallback, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -7,32 +7,33 @@ import {
   LayoutChangeEvent,
   StyleSheet,
   Text,
-  View
-} from "react-native";
-import { TouchableWithoutFeedback } from "react-native-gesture-handler";
-import { t } from "react-native-tailwindcss";
-import { human } from "react-native-typography";
+  View,
+  LayoutRectangle,
+} from 'react-native';
+import { TouchableWithoutFeedback } from 'react-native-gesture-handler';
+import { t } from 'react-native-tailwindcss';
+import { human } from 'react-native-typography';
 
-const YELLOW_BG = "#F8E3B7";
-const ORANGE_ACTION = "#E5855F";
-const DARKBLUE_COMPLETE = "#282B43";
+const YELLOW_BG = '#F8E3B7';
+const ORANGE_ACTION = '#E5855F';
+const DARKBLUE_COMPLETE = '#282B43';
 
 export default function App() {
   const [filename, setFilename] = useState<string | undefined>();
-  const [showButtonClone, setShowButtonClone] = useState(false);
+  const [uploadStarted, setUploadStarted] = useState(false);
 
   const [buttonWidth, setButtonWidth] = useState<number | null>(null);
   const captureButtonWidth = (layoutEvent: LayoutChangeEvent) => {
-    if (showButtonClone) {
+    if (uploadStarted) {
       setButtonWidth(layoutEvent.nativeEvent.layout.width);
     }
   };
 
-  const [componentWidth, setComponentWidth] = useState<number | null>(null);
-  const captureComponentWidth = (layoutEvent: LayoutChangeEvent) => {
-    if (componentWidth === null) {
+  const [componentDimensions, setComponentDimensions] = useState<LayoutRectangle | null>(null);
+  const captureComponentDimensions = (layoutEvent: LayoutChangeEvent) => {
+    if (componentDimensions === null) {
       // Only do this once
-      setComponentWidth(layoutEvent.nativeEvent.layout.width);
+      setComponentDimensions(layoutEvent.nativeEvent.layout);
     }
   };
 
@@ -41,35 +42,65 @@ export default function App() {
   const [startUploadAnimation] = useState(new Animated.Value(0));
   const [finishUploadAnimation] = useState(new Animated.Value(0));
 
-  const animatedButtonMargin = {
-    margin: startUploadAnimation.interpolate({
-      inputRange: [0, 1],
-      outputRange: [4, 0],
-      extrapolate: "clamp"
-    }),
-    paddingHorizontal: startUploadAnimation.interpolate({
-      inputRange: [0, 1],
-      outputRange: [12, 16],
-      extrapolate: "clamp"
-    })
-  };
-  const animatedScale = {
+  const animatedComponentScale = {
     transform: [
       {
         scale: pressBounceAnimation.interpolate({
           inputRange: [0, 1],
-          outputRange: [1, 0.96]
-        })
-      }
-    ]
+          outputRange: [1, 0.96],
+        }),
+      },
+    ],
+  };
+
+  const animatedButtonMargin = {
+    margin: startUploadAnimation.interpolate({
+      inputRange: [0, 1],
+      outputRange: [4, 0],
+      extrapolate: 'clamp',
+    }),
+    paddingHorizontal: startUploadAnimation.interpolate({
+      inputRange: [0, 1],
+      outputRange: [12, 16],
+      extrapolate: 'clamp',
+    }),
   };
 
   const buttonCloneStyles = {
     width: startUploadAnimation.interpolate({
       inputRange: [1, 2],
-      outputRange: [buttonWidth, componentWidth]
-    })
+      outputRange: [buttonWidth, componentDimensions?.width || 0],
+    }),
   };
+
+  const mainTextStyles = {
+    transform: [
+      {
+        translateY: startUploadAnimation.interpolate({
+          inputRange: [1, 2],
+          outputRange: [0, -(componentDimensions?.height || 0) / 2],
+          extrapolate: 'clamp',
+        }),
+      },
+    ],
+    opacity: startUploadAnimation.interpolate({
+      inputRange: [1, 1.5],
+      outputRange: [1, 0],
+      extrapolate: 'clamp',
+    }),
+  };
+
+  const uploadingTextStyles = {
+    transform: [
+      {
+        translateY: startUploadAnimation.interpolate({
+          inputRange: [1, 2],
+          outputRange: [(componentDimensions?.height || 0) / 2, 0],
+          extrapolate: 'clamp',
+        }),
+      },
+    ]
+  }
 
   const animatePressIn = () => {
     Animated.timing(pressBounceAnimation, { toValue: 1, duration: 80 }).start();
@@ -78,20 +109,20 @@ export default function App() {
   const animatePressOut = () => {
     Animated.timing(pressBounceAnimation, {
       toValue: 0,
-      easing: Easing.bounce
+      easing: Easing.bounce,
     }).start();
   };
 
   const pickFile = () => {
     Alert.alert(
-      "File picker",
-      "Pretend this is a file picker",
+      'File picker',
+      'Pretend this is a file picker',
       [
-        { text: "Cancel", style: "cancel" },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: "Pick",
-          onPress: () => setFilename("Document.pdf")
-        }
+          text: 'Pick',
+          onPress: () => setFilename('Document.pdf'),
+        },
       ],
       { cancelable: true }
     );
@@ -100,10 +131,10 @@ export default function App() {
   const startUpload = () => {
     Animated.timing(startUploadAnimation, { toValue: 1, delay: 125 }).start(
       () => {
-        setShowButtonClone(true);
+        setUploadStarted(true);
         Animated.timing(startUploadAnimation, {
           toValue: 2,
-          delay: 100
+          delay: 100,
         }).start(() => {
           // Start file upload (saga in real life?)
         });
@@ -115,43 +146,44 @@ export default function App() {
     <View style={styles.container}>
       <Animated.View
         style={[
+          t.overflowHidden,
           t.flexRow,
           t.bgWhite,
           t.roundedLg,
           t.shadowXl,
           t.relative,
           {
-            minWidth: "75%"
+            minWidth: '75%',
             // height: buttonHeight
           },
-          animatedScale
+          animatedComponentScale,
         ]}
-        onLayout={captureComponentWidth}
+        onLayout={captureComponentDimensions}
       >
-        {showButtonClone && (
+        {uploadStarted && (
           <Animated.View
             style={[
               t.absolute,
               t.roundedLg,
+              t.hFull,
               {
                 backgroundColor: ORANGE_ACTION,
                 right: 0,
-                height: "100%"
               },
-              buttonCloneStyles
+              buttonCloneStyles,
             ]}
           />
         )}
         <View style={[t.flex1]}>
           <TouchableWithoutFeedback
-            style={[t.flexRow, t.itemsCenter, t.pY5, t.pX3]}
+            style={[t.flexRow, t.itemsCenter, t.pY5, t.pX3, mainTextStyles]}
             onPressIn={() => !filename && animatePressIn()}
             onPressOut={animatePressOut}
             onPress={() => !filename && pickFile()}
           >
             <MaterialCommunityIcons name="paperclip" size={24} />
             <Text style={[human.body, t.mL2, !filename && t.textGray600]}>
-              {filename ? filename : "Select a file"}
+              {filename ? filename : 'Select a file'}
             </Text>
           </TouchableWithoutFeedback>
         </View>
@@ -162,16 +194,19 @@ export default function App() {
             t.justifyCenter,
             t.pX3,
             t.roundedLg,
+            { backgroundColor: ORANGE_ACTION },
             animatedButtonMargin,
-            { backgroundColor: ORANGE_ACTION }
           ]}
           onPress={() => (filename ? startUpload() : pickFile())}
           onPressIn={animatePressIn}
           onPressOut={animatePressOut}
           onLayout={captureButtonWidth}
         >
-          <Text style={[human.body, t.textWhite]}>Upload</Text>
+          <Animated.Text style={[human.body, t.textWhite, mainTextStyles]}>Upload</Animated.Text>
         </TouchableWithoutFeedback>
+        {uploadStarted && <View style={[t.absolute, t.inset0, t.hFull, t.justifyCenter, t.itemsCenter]}>
+          <Animated.Text style={[human.body, t.textWhite, uploadingTextStyles]}>Uploading...</Animated.Text>
+        </View>}
       </Animated.View>
     </View>
   );
@@ -181,7 +216,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: YELLOW_BG,
-    alignItems: "center",
-    justifyContent: "center"
-  }
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });
