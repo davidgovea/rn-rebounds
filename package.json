@@ -16,13 +16,14 @@
     "react-native-neomorph-shadows": "0.0.7",
     "react-native-reanimated": "^1.4.0",
     "react-native-root-toast": "^3.2.0",
+    "react-native-safe-area-context": "0.6.0",
+    "react-native-safe-area-view": "^1.0.0",
     "react-native-screens": "2.0.0-alpha.12",
     "react-native-svg": "^9.13.3",
-    "react-native-tailwindcss": "^1.1.6",
+    "react-native-tailwindcss": "1.1.6",
     "react-native-typography": "^1.4.1",
     "react-native-vector-icons": "^6.6.0",
-    "react-native-web": "~0.11.7",
-    "react-native-safe-area-context": "0.6.0"
+    "react-native-web": "~0.11.7"
   },
   "devDependencies": {
     "@types/react": "~16.9.0",
