@@ -14,11 +14,12 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import SafeAreaView from 'react-native-safe-area-view';
-import { color, t } from 'react-native-tailwindcss';
+import { t } from 'react-native-tailwindcss';
 import { iOSUIKit } from 'react-native-typography';
 
 const DONE_GREEN = '#45c352';
@@ -136,11 +137,16 @@ export default function App() {
   const [data, setData] = useState(
     prepareData(STATIC_DATA[activeList], GREEN_PALETTE)
   );
+  const [lastDismissed, setLastDismissed] = useState<
+    // Capture index for proper "undo"
+    [string, number] | undefined
+  >();
 
   const loadTimer = useRef<number | null>(null);
   const changeList = (list: string) => {
     setList(list);
     setIsLoading(true);
+    setLastDismissed(undefined);
     clearTimeout(loadTimer.current);
     loadTimer.current = setTimeout(() => {
       const palette = list === 'Personal' ? GREEN_PALETTE : PURPLE_PALETTE;
@@ -160,6 +166,36 @@ export default function App() {
     }).start();
   }, [isLoading]);
 
+  const [dismissAnimation] = useState(new Animated.Value(0));
+  useEffect(() => {
+    if (!lastDismissed) {
+      return;
+    }
+    const [dismissedTodoName, _index] = lastDismissed;
+    dismissAnimation.setValue(0);
+    Animated.sequence([
+      Animated.timing(dismissAnimation, {
+        toValue: 1,
+        duration: 350,
+        easing: Easing.inOut(Easing.cubic),
+      }),
+      Animated.timing(dismissAnimation, {
+        toValue: 2,
+        duration: 500,
+        delay: 150,
+        easing: Easing.inOut(Easing.cubic),
+      }),
+      Animated.timing(dismissAnimation, {
+        toValue: 3,
+        delay: 150,
+        duration: 666,
+        easing: Easing.inOut(Easing.cubic),
+      }),
+    ]).start(() => {
+      setData(data.filter((t) => t.name !== dismissedTodoName));
+    });
+  }, [lastDismissed]);
+
   const todoLoadingStyles = {
     paddingTop: loadingAnimation.interpolate({
       inputRange: [0, 1],
@@ -176,6 +212,94 @@ export default function App() {
       outputRange: [1, 0],
     }),
   };
+
+  const makeDismissingStyles = (todo: typeof data[0]) => {
+    return {
+      todoContainer: {
+        paddingTop: dismissAnimation.interpolate({
+          inputRange: [0, 1, 2],
+          extrapolate: 'clamp',
+          outputRange: [16, 16 + LOADING_BOUNCE_HEIGHT / 2, 16],
+        }),
+        marginBottom: dismissAnimation.interpolate({
+          inputRange: [0, 1, 2],
+          extrapolate: 'clamp',
+          outputRange: [
+            -TODO_RADIUS - LOADING_BOUNCE_HEIGHT,
+            -TODO_RADIUS,
+            -TODO_RADIUS - LOADING_BOUNCE_HEIGHT,
+          ],
+        }),
+        backgroundColor: dismissAnimation.interpolate({
+          inputRange: [0, 1, 2, 3],
+          outputRange: [todo.background, DONE_GREEN, DONE_GREEN, 'white'],
+        }),
+        height: dismissAnimation.interpolate({
+          inputRange: [2, 3],
+          extrapolate: 'clamp',
+          outputRange: [
+            BUTTON_HEIGHT + TODO_RADIUS + LOADING_BOUNCE_HEIGHT,
+            TODO_RADIUS + LOADING_BOUNCE_HEIGHT,
+          ],
+        }),
+        transform: [
+          {
+            translateY: dismissAnimation.interpolate({
+              inputRange: [2, 3],
+              extrapolate: 'clamp',
+              outputRange: [0, 20],
+            }),
+          },
+        ],
+      },
+      text: {
+        // Fade out white on 1st phase
+        opacity: dismissAnimation.interpolate({
+          inputRange: [0, 1],
+          extrapolate: 'clamp',
+          outputRange: [1, 0],
+        }),
+      },
+      button: {
+        // Fade to white on 1st phase
+        backgroundColor: dismissAnimation.interpolate({
+          inputRange: [0, 1],
+          extrapolate: 'clamp',
+          outputRange: ['rgba(0, 0, 0, 0.1)', 'white'],
+        }),
+        opacity: dismissAnimation.interpolate({
+          inputRange: [2, 3],
+          extrapolate: 'clamp',
+          outputRange: [1, 0],
+        }),
+      },
+      // // Icon does not accept animated color value. Change is a jump
+      // buttonIcon: {
+      //   color: dismissAnimation.interpolate({
+      //     inputRange: [0, 1],
+      //     extrapolate: 'clamp',
+      //     outputRange: ['white', DONE_GREEN],
+      //   }),
+      // },
+      doneText: {
+        // Fade in on 2nd phase
+        opacity: dismissAnimation.interpolate({
+          inputRange: [1, 2, 3],
+          outputRange: [0, 1, 0],
+        }),
+        transform: [
+          {
+            translateY: dismissAnimation.interpolate({
+              inputRange: [1, 2],
+              extrapolate: 'clamp',
+              outputRange: [-20, 0],
+            }),
+          },
+        ],
+      },
+    };
+  };
+
   return (
     <>
       <StatusBar translucent={false} barStyle="light-content" />
@@ -204,45 +328,84 @@ export default function App() {
           />
 
           <View style={[t.flexGrow, t.mX3, t.mT8]}>
-            {data.map((todo) => (
-              <Animated.View
-                style={[
-                  { backgroundColor: todo.background },
-                  styles.todoContainer,
-                  todoLoadingStyles,
-                ]}
-              >
-                <View style={[t.flexRow]}>
-                  <View style={[t.flexGrow]}>
-                    <Animated.Text
-                      style={[
-                        iOSUIKit.subheadEmphasizedWhite,
-                        textLoadingStyles,
-                      ]}
+            {data.map((todo, index) => {
+              const dismissingStyles =
+                (lastDismissed?.[0] === todo.name &&
+                  makeDismissingStyles(todo)) ||
+                undefined;
+              return (
+                <Animated.View
+                  key={todo.name}
+                  style={[
+                    { backgroundColor: todo.background },
+                    styles.todoContainer,
+                    todoLoadingStyles,
+                    dismissingStyles?.todoContainer,
+                  ]}
+                >
+                  <View style={[t.flexRow]}>
+                    <View style={[t.flexGrow, t.relative]}>
+                      <Animated.Text
+                        style={[
+                          iOSUIKit.subheadEmphasizedWhite,
+                          textLoadingStyles,
+                          dismissingStyles?.text,
+                        ]}
+                      >
+                        {todo.name}
+                      </Animated.Text>
+                      <Animated.Text
+                        style={[
+                          iOSUIKit.footnoteEmphasized,
+                          textLoadingStyles,
+                          { color: 'rgba(255, 255, 255, 0.6)' },
+                          dismissingStyles?.text,
+                        ]}
+                      >
+                        {todo.date}
+                      </Animated.Text>
+                      {dismissingStyles && (
+                        <View style={[t.absolute, t.inset0, t.justifyCenter]}>
+                          <Animated.Text
+                            style={[
+                              iOSUIKit.subheadEmphasizedWhite,
+                              dismissingStyles?.doneText,
+                            ]}
+                          >
+                            Marked as Done
+                          </Animated.Text>
+                        </View>
+                      )}
+                    </View>
+                    <TouchableWithoutFeedback
+                      onPress={() => {
+                        setLastDismissed([todo.name, index]);
+                      }}
                     >
-                      {todo.name}
-                    </Animated.Text>
-                    <Animated.Text
-                      style={[
-                        iOSUIKit.footnoteEmphasized,
-                        textLoadingStyles,
-                        { color: 'rgba(255, 255, 255, 0.6)' },
-                      ]}
-                    >
-                      {todo.date}
-                    </Animated.Text>
+                      <Animated.View
+                        style={[
+                          styles.todoButton,
+                          textLoadingStyles,
+                          dismissingStyles?.button,
+                        ]}
+                      >
+                        <MaterialCommunityIcons
+                          name="check"
+                          style={[
+                            t.textXl,
+                            dismissingStyles
+                              ? { color: DONE_GREEN }
+                              : t.textWhite,
+                          ]}
+                        />
+                      </Animated.View>
+                    </TouchableWithoutFeedback>
                   </View>
-                  <Animated.View style={[styles.todoButton, textLoadingStyles]}>
-                    <MaterialCommunityIcons
-                      name="check"
-                      style={[t.textXl, t.textWhite]}
-                    />
-                  </Animated.View>
-                </View>
-              </Animated.View>
-            ))}
+                </Animated.View>
+              );
+            })}
             <View
-              style={[t.flexGrow, { backgroundColor: topCard.background }]}
+              style={[t.flexGrow, { backgroundColor: topCard?.background }]}
             />
           </View>
         </View>
